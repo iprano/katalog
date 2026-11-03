@@ -18,7 +18,7 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:
 .k .im{aspect-ratio:16/9;background:#0b0a09 center/cover no-repeat}
 .k .t{padding:7px 9px 9px;font-size:13px;line-height:1.25}.k .z{color:var(--sery);font-size:11px;margin-top:3px}
 #okno{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:10;display:none;overflow:auto;padding:14px}
-#okno img{width:100%;border-radius:10px;display:block;margin-bottom:12px}
+#okno img,#okno video{width:100%;border-radius:10px;display:block;margin-bottom:12px;background:#000}
 #okno h2{margin:0 0 6px;font-size:19px}#okno p{margin:0 0 10px;color:#cfc8bd}
 #okno .tg{color:var(--sery);font-size:13px;margin-bottom:16px}
 #okno button{width:100%;padding:13px;border-radius:12px;border:0;font-size:16px;margin-bottom:8px}
@@ -38,7 +38,7 @@ const data=t=>{const d=new Date(t*1000);return String(d.getDate()).padStart(2,"0
 function b64(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return Uint8Array.from(atob(s),c=>c.charCodeAt(0));}
 async function otkryt(url){const b=new Uint8Array(await (await fetch(url,{cache:"no-cache"})).arrayBuffer());
   return crypto.subtle.decrypt({name:"AES-GCM",iv:b.slice(0,12)},K,b.slice(12));}
-async function kartinka(id){if(!kesh[id])kesh[id]=otkryt("i/"+id+".bin").then(a=>URL.createObjectURL(new Blob([a],{type:"image/jpeg"})));return kesh[id];}
+async function kartinka(id,tip){if(!kesh[id])kesh[id]=otkryt("i/"+id+".bin").then(a=>URL.createObjectURL(new Blob([a],{type:tip||"image/jpeg"})));return kesh[id];}
 const nab=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting)return;nab.unobserve(e.target);
   kartinka(e.target.dataset.id).then(u=>e.target.style.backgroundImage=`url(${u})`).catch(()=>{});}),{rootMargin:"300px"});
 function ris(){
@@ -48,13 +48,15 @@ function ris(){
   const L=D.map((k,i)=>[k,i]).filter(([k])=>(!zona||k.z===zona)&&(sort!=="html"||k.h)&&(!q||(k.t+" "+k.w+" "+k.tags.join(" ")+" "+k.d).toLowerCase().includes(q)));
   L.sort(([a],[b])=>sort==="old"?a.dt-b.dt:sort==="az"?a.t.localeCompare(b.t,"ru"):b.dt-a.dt);
   $("#n").textContent=L.length;
-  $("#m").innerHTML=L.length?L.map(([k,i])=>`<div class="k" data-i="${i}"><div class="im" data-id="${k.i}"></div><div class="t">${esc(k.t)}<div class="z">${esc(k.z)} · ${data(k.dt)}${k.h?" · <b>HTML</b>":""}</div></div></div>`).join(""):'<div class="pusto">Ничего не нашлось</div>';
+  $("#m").innerHTML=L.length?L.map(([k,i])=>`<div class="k" data-i="${i}"><div class="im" data-id="${k.i}"></div><div class="t">${esc(k.t)}<div class="z">${esc(k.z)} · ${data(k.dt)}${k.h?" · <b>HTML</b>":""}${k.v?" · <b>▶</b>":""}</div></div></div>`).join(""):'<div class="pusto">Ничего не нашлось</div>';
   document.querySelectorAll(".im[data-id]").forEach(e=>e.dataset.id&&nab.observe(e));
 }
 async function pokaz(k){
-  $("#okno").innerHTML=`<img id="bol"><h2>${esc(k.t)}</h2><p>${esc(k.w)}</p><div class="tg">${esc(k.z)} · ${k.tags.map(esc).join(" · ")}</div><button id="vzyat">✅ Взять за основу</button><button id="zakr">Закрыть</button>`;
+  $("#okno").innerHTML=`${k.v?'<video id="vid" autoplay muted loop playsinline controls></video>':'<img id="bol">'}<h2>${esc(k.t)}</h2><p>${esc(k.w)}</p><div class="tg">${esc(k.z)} · ${k.tags.map(esc).join(" · ")}</div><button id="vzyat">✅ Взять за основу</button><button id="zakr">Закрыть</button>`;
   $("#okno").style.display="block";$("#okno").scrollTop=0;
-  if(k.i)kartinka(k.i).then(u=>$("#bol")&&($("#bol").src=u));
+  if(k.v){if(k.i)kartinka(k.i).then(u=>$("#vid")&&($("#vid").poster=u));
+    kartinka(k.v,"video/mp4").then(u=>{const v=$("#vid");if(v){v.src=u;v.play().catch(()=>{});}});}
+  else if(k.i)kartinka(k.i).then(u=>$("#bol")&&($("#bol").src=u));
   $("#zakr").onclick=zakr;
   $("#vzyat").onclick=()=>{const s=JSON.stringify({priem:k.d,t:k.t});
     if(tg&&tg.initData!==undefined&&tg.sendData){try{tg.sendData(s);return;}catch(e){}}
