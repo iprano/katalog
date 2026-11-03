@@ -19,6 +19,11 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:
 .k .t{padding:7px 9px 9px;font-size:13px;line-height:1.25}.k .z{color:var(--sery);font-size:11px;margin-top:3px}
 #okno{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:10;display:none;overflow:auto;padding:14px}
 #okno img,#okno video{width:100%;border-radius:10px;display:block;margin-bottom:12px;background:#000}
+#zh{position:relative;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000 center/cover no-repeat;margin-bottom:12px}
+#zh iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0;pointer-events:none}
+#zh .pol{position:absolute;left:0;bottom:0;height:3px;background:var(--zh);width:0}
+#zh .zv{position:absolute;right:8px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:16px;padding:5px 10px;font-size:14px;width:auto;margin:0}
+#zh .zhd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sery);font-size:13px}
 #okno h2{margin:0 0 6px;font-size:19px}#okno p{margin:0 0 10px;color:#cfc8bd}
 #okno .tg{color:var(--sery);font-size:13px;margin-bottom:16px}
 #okno button{width:100%;padding:13px;border-radius:12px;border:0;font-size:16px;margin-bottom:8px}
@@ -48,13 +53,14 @@ function ris(){
   const L=D.map((k,i)=>[k,i]).filter(([k])=>(!zona||k.z===zona)&&(sort!=="html"||k.h)&&(!q||(k.t+" "+k.w+" "+k.tags.join(" ")+" "+k.d).toLowerCase().includes(q)));
   L.sort(([a],[b])=>sort==="old"?a.dt-b.dt:sort==="az"?a.t.localeCompare(b.t,"ru"):b.dt-a.dt);
   $("#n").textContent=L.length;
-  $("#m").innerHTML=L.length?L.map(([k,i])=>`<div class="k" data-i="${i}"><div class="im" data-id="${k.i}"></div><div class="t">${esc(k.t)}<div class="z">${esc(k.z)} · ${data(k.dt)}${k.h?" · <b>HTML</b>":""}${k.v?" · <b>▶</b>":""}</div></div></div>`).join(""):'<div class="pusto">Ничего не нашлось</div>';
+  $("#m").innerHTML=L.length?L.map(([k,i])=>`<div class="k" data-i="${i}"><div class="im" data-id="${k.i}"></div><div class="t">${esc(k.t)}<div class="z">${esc(k.z)} · ${data(k.dt)}${k.h?" · <b>HTML</b>":""}${(k.hz||k.v)?" · <b>▶</b>":""}</div></div></div>`).join(""):'<div class="pusto">Ничего не нашлось</div>';
   document.querySelectorAll(".im[data-id]").forEach(e=>e.dataset.id&&nab.observe(e));
 }
 async function pokaz(k){
-  $("#okno").innerHTML=`${k.v?'<video id="vid" autoplay muted loop playsinline controls></video>':'<img id="bol">'}<h2>${esc(k.t)}</h2><p>${esc(k.w)}</p><div class="tg">${esc(k.z)} · ${k.tags.map(esc).join(" · ")}</div><button id="vzyat">✅ Взять за основу</button><button id="zakr">Закрыть</button>`;
+  $("#okno").innerHTML=`${k.hz?'<div id="zh"><div class="zhd">Загружаю сцену…</div></div>':k.v?'<video id="vid" autoplay muted loop playsinline controls></video>':'<img id="bol">'}<h2>${esc(k.t)}</h2><p>${esc(k.w)}</p><div class="tg">${esc(k.z)} · ${k.tags.map(esc).join(" · ")}</div><button id="vzyat">✅ Взять за основу</button><button id="zakr">Закрыть</button>`;
   $("#okno").style.display="block";$("#okno").scrollTop=0;
-  if(k.v){if(k.i)kartinka(k.i).then(u=>$("#vid")&&($("#vid").poster=u));
+  if(k.hz)zhivoy(k);
+  else if(k.v){if(k.i)kartinka(k.i).then(u=>$("#vid")&&($("#vid").poster=u));
     kartinka(k.v,"video/mp4").then(u=>{const v=$("#vid");if(v){v.src=u;v.play().catch(()=>{});}});}
   else if(k.i)kartinka(k.i).then(u=>$("#bol")&&($("#bol").src=u));
   $("#zakr").onclick=zakr;
@@ -64,7 +70,36 @@ async function pokaz(k){
     $("#vzyat").textContent="Скопировал – вставь Сене в чат";};
   if(tg){tg.BackButton.show();tg.BackButton.onClick(zakr);}
 }
-function zakr(){$("#okno").style.display="none";$("#okno").innerHTML="";if(tg)tg.BackButton.hide();}
+// живая сцена: HTML шаблона в рамке 1920×1080, каталог сам крутит seek(t); звук – часы, после звука – таймер (как pokaz.py)
+let igra=0;
+async function zhivoy(k){
+  const moy=++igra, box=$("#zh");
+  if(k.i)kartinka(k.i).then(u=>box&&(box.style.backgroundImage=`url(${u})`));
+  let html;try{html=new TextDecoder().decode(await otkryt("i/"+k.hz+".bin"));}catch(e){box.querySelector(".zhd").textContent="Не открылась";return;}
+  if(moy!==igra)return;
+  const fr=document.createElement("iframe"), pol=document.createElement("div");pol.className="pol";
+  const fit=()=>{fr.style.transform=`scale(${box.clientWidth/1920})`;};
+  fr.srcdoc=html;box.append(fr,pol);fit();addEventListener("resize",fit);
+  let zv=null;
+  if(k.a){zv=new Audio();zv.muted=true;zv.preload="auto";kartinka(k.a,"audio/mp4").then(u=>{zv.src=u;});
+    const b=document.createElement("button");b.className="zv";b.textContent="🔇";box.append(b);
+    b.onclick=e=>{e.stopPropagation();zv.muted=!zv.muted;b.textContent=zv.muted?"🔇":"🔊";if(zv.muted)zv.pause();else if(t<(zv.duration||0)){zv.currentTime=t;zv.play().catch(()=>{});}};}
+  let t=0,last=null,pauza=false;
+  box.onclick=()=>{pauza=!pauza;if(zv){if(pauza)zv.pause();else if(t<(zv.duration||0))zv.play().catch(()=>{});}};
+  const W=()=>fr.contentWindow, gotov=()=>{try{const w=W();return typeof w.seek==="function"&&(!w.SOLO||w.__ready===true);}catch(e){return false;}};
+  const t0=performance.now();
+  while(!gotov()&&performance.now()-t0<8000){await new Promise(r=>setTimeout(r,60));if(moy!==igra)return;}
+  if(!gotov()){box.querySelector(".zhd").textContent="Сцена не запустилась";return;}
+  box.querySelector(".zhd").remove();box.style.backgroundImage="none";
+  const zvS=s=>{if(!zv||zv.muted)return;if(s<(zv.duration||0)){zv.currentTime=s;zv.play().catch(()=>{});}else zv.pause();};
+  zvS(0);
+  (function f(now){if(moy!==igra){if(zv)zv.pause();return;}
+    if(!pauza){if(zv&&!zv.muted&&!zv.paused&&!zv.ended&&zv.readyState>1)t=zv.currentTime;else if(last!==null)t+=(now-last)/1000;
+      if(t>=k.L){t=0;zvS(0);}}
+    last=now;try{W().seek(t);}catch(e){}
+    pol.style.width=(100*t/k.L)+"%";requestAnimationFrame(f);})(performance.now());
+}
+function zakr(){igra++;$("#okno").style.display="none";$("#okno").innerHTML="";if(tg)tg.BackButton.hide();}
 (async()=>{
   try{const s=new URLSearchParams(location.search).get("k");if(!s)throw 0;
     K=await crypto.subtle.importKey("raw",b64(s),"AES-GCM",false,["decrypt"]);
