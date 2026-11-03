@@ -11,6 +11,8 @@ h1{margin:0 0 8px;font-size:20px;font-weight:700}h1 b{color:var(--zh)}
 input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #333;background:#0e0d0c;color:var(--tekst);font-size:16px}
 .zony{display:flex;gap:6px;overflow-x:auto;padding-top:8px}.zony button{flex:none;border:1px solid #3a3734;background:none;color:var(--sery);border-radius:20px;padding:5px 11px;font-size:13px}
 .zony button.on{background:var(--zh);color:#111;border-color:var(--zh)}
+.sort{display:flex;gap:6px;padding-top:6px}.sort button{border:0;background:none;color:var(--sery);font-size:13px;padding:3px 6px}.sort button.on{color:var(--zh);font-weight:700}
+.k .z b{color:var(--zh);font-weight:600}
 main{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding:10px 12px 40px}
 .k{background:var(--kart);border-radius:12px;overflow:hidden;cursor:pointer}
 .k .im{aspect-ratio:16/9;background:#0b0a09 center/cover no-repeat}
@@ -24,13 +26,15 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:
 .pusto{grid-column:1/-1;text-align:center;color:var(--sery);padding:40px}
 </style></head><body>
 <header><h1>Приёмы <b id="n"></b></h1><input id="q" placeholder="Поиск: титр, карта, чат…" autocomplete="off">
-<div class="zony" id="zony"></div></header>
+<div class="zony" id="zony"></div>
+<div class="sort" id="sort"><button data-s="new">Сначала новые</button><button data-s="old">Старые</button><button data-s="az">А–Я</button><button data-s="html">HTML</button></div></header>
 <main id="m"><div class="pusto">Открываю…</div></main>
 <div id="okno"></div>
 <script>
 const tg=window.Telegram&&Telegram.WebApp; if(tg){tg.ready();tg.expand();}
 const $=s=>document.querySelector(s), esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let D=[], K=null, zona="", kesh={};
+let D=[], K=null, zona="", kesh={}, sort=localStorage.getItem("sort")||"new";
+const data=t=>{const d=new Date(t*1000);return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0");};
 function b64(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return Uint8Array.from(atob(s),c=>c.charCodeAt(0));}
 async function otkryt(url){const b=new Uint8Array(await (await fetch(url,{cache:"no-cache"})).arrayBuffer());
   return crypto.subtle.decrypt({name:"AES-GCM",iv:b.slice(0,12)},K,b.slice(12));}
@@ -40,9 +44,11 @@ const nab=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting)retur
 function ris(){
   const q=$("#q").value.trim().toLowerCase();
   document.querySelectorAll("#zony button").forEach(b=>b.classList.toggle("on",b.dataset.z===zona));
-  const L=D.map((k,i)=>[k,i]).filter(([k])=>(!zona||k.z===zona)&&(!q||(k.t+" "+k.w+" "+k.tags.join(" ")+" "+k.d).toLowerCase().includes(q)));
+  document.querySelectorAll("#sort button").forEach(b=>b.classList.toggle("on",b.dataset.s===sort));
+  const L=D.map((k,i)=>[k,i]).filter(([k])=>(!zona||k.z===zona)&&(sort!=="html"||k.h)&&(!q||(k.t+" "+k.w+" "+k.tags.join(" ")+" "+k.d).toLowerCase().includes(q)));
+  L.sort(([a],[b])=>sort==="old"?a.dt-b.dt:sort==="az"?a.t.localeCompare(b.t,"ru"):b.dt-a.dt);
   $("#n").textContent=L.length;
-  $("#m").innerHTML=L.length?L.map(([k,i])=>`<div class="k" data-i="${i}"><div class="im" data-id="${k.i}"></div><div class="t">${esc(k.t)}<div class="z">${esc(k.z)}</div></div></div>`).join(""):'<div class="pusto">Ничего не нашлось</div>';
+  $("#m").innerHTML=L.length?L.map(([k,i])=>`<div class="k" data-i="${i}"><div class="im" data-id="${k.i}"></div><div class="t">${esc(k.t)}<div class="z">${esc(k.z)} · ${data(k.dt)}${k.h?" · <b>HTML</b>":""}</div></div></div>`).join(""):'<div class="pusto">Ничего не нашлось</div>';
   document.querySelectorAll(".im[data-id]").forEach(e=>e.dataset.id&&nab.observe(e));
 }
 async function pokaz(k){
@@ -65,6 +71,7 @@ function zakr(){$("#okno").style.display="none";$("#okno").innerHTML="";if(tg)tg
   const zony=["",...new Set(D.map(k=>k.z).filter(Boolean))];
   $("#zony").innerHTML=zony.map(z=>`<button data-z="${esc(z)}">${esc(z||"все")}</button>`).join("");
   $("#zony").onclick=e=>{const b=e.target.closest("button");if(!b)return;zona=b.dataset.z;ris();};
+  $("#sort").onclick=e=>{const b=e.target.closest("button");if(!b)return;sort=b.dataset.s;localStorage.setItem("sort",sort);ris();};
   $("#q").oninput=ris;
   $("#m").onclick=e=>{const c=e.target.closest(".k");if(c)pokaz(D[c.dataset.i]);};
   ris();
