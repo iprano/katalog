@@ -22,7 +22,6 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:
 #zh{position:relative;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000 center/cover no-repeat;margin-bottom:12px}
 #zh iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0;pointer-events:none}
 #zh .pol{position:absolute;left:0;bottom:0;height:3px;background:var(--zh);width:0}
-#zh .zv{position:absolute;right:8px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:16px;padding:5px 10px;font-size:14px;width:auto;margin:0}
 #zh .zhd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sery);font-size:13px}
 #okno h2{margin:0 0 6px;font-size:19px}#okno p{margin:0 0 10px;color:#cfc8bd}
 #okno .tg{color:var(--sery);font-size:13px;margin-bottom:16px}
@@ -70,7 +69,7 @@ async function pokaz(k){
     $("#vzyat").textContent="Скопировал – вставь Сене в чат";};
   if(tg){tg.BackButton.show();tg.BackButton.onClick(zakr);}
 }
-// живая сцена: HTML шаблона в рамке 1920×1080, каталог сам крутит seek(t); звук – часы, после звука – таймер (как pokaz.py)
+// живая сцена: HTML шаблона в рамке 1920×1080, каталог сам крутит seek(t) по таймеру, без звука (Антон 04.11)
 let igra=0;
 async function zhivoy(k){
   const moy=++igra, box=$("#zh");
@@ -80,22 +79,15 @@ async function zhivoy(k){
   const fr=document.createElement("iframe"), pol=document.createElement("div");pol.className="pol";
   const fit=()=>{fr.style.transform=`scale(${box.clientWidth/1920})`;};
   fr.srcdoc=html;box.append(fr,pol);fit();addEventListener("resize",fit);
-  let zv=null;
-  if(k.a){zv=new Audio();zv.muted=true;zv.preload="auto";kartinka(k.a,"audio/mp4").then(u=>{zv.src=u;});
-    const b=document.createElement("button");b.className="zv";b.textContent="🔇";box.append(b);
-    b.onclick=e=>{e.stopPropagation();zv.muted=!zv.muted;b.textContent=zv.muted?"🔇":"🔊";if(zv.muted)zv.pause();else if(t<(zv.duration||0)){zv.currentTime=t;zv.play().catch(()=>{});}};}
   let t=0,last=null,pauza=false;
-  box.onclick=()=>{pauza=!pauza;if(zv){if(pauza)zv.pause();else if(t<(zv.duration||0))zv.play().catch(()=>{});}};
+  box.onclick=()=>{pauza=!pauza;};
   const W=()=>fr.contentWindow, gotov=()=>{try{const w=W();return typeof w.seek==="function"&&(!w.SOLO||w.__ready===true);}catch(e){return false;}};
   const t0=performance.now();
   while(!gotov()&&performance.now()-t0<8000){await new Promise(r=>setTimeout(r,60));if(moy!==igra)return;}
   if(!gotov()){box.querySelector(".zhd").textContent="Сцена не запустилась";return;}
   box.querySelector(".zhd").remove();box.style.backgroundImage="none";
-  const zvS=s=>{if(!zv||zv.muted)return;if(s<(zv.duration||0)){zv.currentTime=s;zv.play().catch(()=>{});}else zv.pause();};
-  zvS(0);
-  (function f(now){if(moy!==igra){if(zv)zv.pause();return;}
-    if(!pauza){if(zv&&!zv.muted&&!zv.paused&&!zv.ended&&zv.readyState>1)t=zv.currentTime;else if(last!==null)t+=(now-last)/1000;
-      if(t>=k.L){t=0;zvS(0);}}
+  (function f(now){if(moy!==igra)return;
+    if(!pauza){if(last!==null)t+=(now-last)/1000;if(t>=k.L)t=0;}
     last=now;try{W().seek(t);}catch(e){}
     pol.style.width=(100*t/k.L)+"%";requestAnimationFrame(f);})(performance.now());
 }
