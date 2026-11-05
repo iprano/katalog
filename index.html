@@ -64,6 +64,7 @@ async function pokaz(k){
   else if(k.i)kartinka(k.i).then(u=>$("#bol")&&($("#bol").src=u));
   $("#zakr").onclick=zakr;
   $("#vzyat").onclick=()=>{const s=JSON.stringify({priem:k.d,t:k.t});
+    const wk=window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.priemy;if(wk){wk.postMessage(s);$("#vzyat").textContent="Отправил Сене";return;}
     if(tg&&tg.initData!==undefined&&tg.sendData){try{tg.sendData(s);return;}catch(e){}}
     navigator.clipboard&&navigator.clipboard.writeText("Возьми за основу приём «"+k.t+"» (ПРИЁМЫ/"+k.d+")");
     $("#vzyat").textContent="Скопировал – вставь Сене в чат";};
